@@ -1,267 +1,454 @@
-from .mt_structures import Transition, MT, Configuration
+# machine_de_turing.py
 
-def charger_machine_depuis_fichier(chemin_fichier):
+"""
+PARTIE 1 — SIMULATEUR DE MACHINE DE TURING
+Implémentation des questions 1 à 6 du projet.
+
+Structure du fichier .tm attendu :
+    init: I
+    accept: F
+
+    I,1
+    X,R,>
+    ...
+"""
+
+import sys
+import os
+
+# Pour permettre les imports depuis la racine du projet
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from machine_de_turing.mt_structures import Transition, MT, Configuration
+
+
+# ================================
+# Q1 & Q2 — LECTURE ET PARSING
+# ================================
+
+def filtrer_lignes_utiles(chemin_fichier):
     """
-    Lit un fichier .tm et construit un objet MT.
-    Format attendu :
-      init: I
-      accept: F
-
-      I,1
-      X,R,>
-      ...
+    Lit un fichier .tm et retourne uniquement les lignes utiles
+    (sans commentaires, sans lignes vides, sans espaces inutiles).
     """
-
-
+    lignes = []
     with open(chemin_fichier, "r", encoding="utf-8") as f:
-        lignes = []
         for ligne in f:
-            # On enlève les espaces en début/fin
             ligne = ligne.strip()
 
-            # On ignore les lignes vides
+            # Ignorer les lignes vides
             if ligne == "":
                 continue
 
-            # On ignore les commentaires (// ou #)
+            # Ignorer les commentaires
             if ligne.startswith("//") or ligne.startswith("#"):
                 continue
-            
-            print("LIGNE LUE :", ligne)
 
-            # On garde la ligne utile
             lignes.append(ligne)
+    return lignes
 
-    # Ensembles pour construire la machine
-    etats = set()
-    alphabet_entree = set()   # pas vraiment utilisé ici, mais on le garde
-    alphabet_ruban = set()
+
+def extraire_etat_initial(lignes):
+    """
+    Recherche la ligne 'init: <etat>' et retourne l'état initial.
+    Retourne None si non trouvé.
+    """
+    for ligne in lignes:
+        if ligne.startswith("init:"):
+            return ligne.split(":")[1].strip()
+    return None
+
+
+def extraire_etat_final(lignes):
+    """
+    Recherche la ligne 'accept: <etat>' et retourne l'état final.
+    Retourne None si non trouvé.
+    """
+    for ligne in lignes:
+        if ligne.startswith("accept:"):
+            return ligne.split(":")[1].strip()
+    return None
+
+
+def est_ligne_configuration(ligne):
+    """
+    Vérifie si une ligne est une directive de configuration
+    (init: ou accept:).
+    """
+    return ligne.startswith("init:") or ligne.startswith("accept:")
+
+
+def est_ligne_transition_etat(ligne):
+    """
+    Vérifie si une ligne correspond à la première ligne d'une transition
+    (contient exactement une virgule, ex: 'I,1').
+    """
+    return ligne.count(",") == 1
+
+
+def parser_ligne_etat(ligne):
+    """
+    Parse la première ligne d'une transition.
+    Entrée : 'I,1'
+    Retourne : ('I', '1')
+    """
+    etat, symbole = ligne.split(",")
+    return etat.strip(), symbole.strip()
+
+
+def parser_ligne_action(ligne):
+    """
+    Parse la deuxième ligne d'une transition.
+    Entrée : 'X,R,>'
+    Retourne : ('X', 'R', '>')
+    """
+    if ligne.count(",") != 2:
+        raise ValueError(f"Transition mal formée : {ligne}")
+    
+    nouvel_etat, symbole_ecrit, mouvement = ligne.split(",")
+    return nouvel_etat.strip(), symbole_ecrit.strip(), mouvement.strip()
+
+
+def convertir_mouvement(mouvement_brut):
+    """
+    Convertit un mouvement du format .tm vers le format interne.
+    '<' -> 'L', '>' -> 'R', '-' -> 'S'
+    """
+    mapping = {"<": "L", ">": "R", "-": "S"}
+    
+    if mouvement_brut not in mapping:
+        raise ValueError(f"Mouvement invalide : {mouvement_brut}")
+    
+    return mapping[mouvement_brut]
+
+
+def extraire_transitions(lignes):
+    """
+    Parcourt les lignes et extrait toutes les transitions.
+    Retourne un dictionnaire :
+        clé   : (etat_courant, (symbole_lu,))
+        valeur: Transition
+    """
     transitions = {}
-    blanc = "_"               # convention : symbole blanc
-
-    etat_initial = None
-    etat_final = None
-
+    etats = set()
+    alphabet_ruban = set()
+    
     i = 0
     while i < len(lignes):
         ligne = lignes[i]
 
-        # Ligne de l'état initial : "init: I"
-        if ligne.startswith("init:"):
-            etat_initial = ligne.split(":")[1].strip()
-            etats.add(etat_initial)
+        # Passer les lignes de configuration
+        if est_ligne_configuration(ligne):
             i += 1
             continue
 
-        # Ligne de l'état final : "accept: F"
-        if ligne.startswith("accept:"):
-            etat_final = ligne.split(":")[1].strip()
-            etats.add(etat_final)
-            i += 1
-            continue
-
-        # LIGNE 1 D'UNE TRANSITION : doit contenir exactement 1 virgule
-        # Exemple : "I,1"
-        if ligne.count(",") == 1:
-            etat_courant, symbole_lu = ligne.split(",")
-            etat_courant = etat_courant.strip()
-            symbole_lu = symbole_lu.strip()
-
-            etats.add(etat_courant)
-            alphabet_ruban.add(symbole_lu)
-
-            # On lit la LIGNE 2 : doit contenir exactement 2 virgules
-            # Exemple : "X,R,>"
+        # Détecter une transition (2 lignes consécutives)
+        if est_ligne_transition_etat(ligne) and i + 1 < len(lignes):
+            # Ligne 1 : état courant et symbole lu
+            etat_courant, symbole_lu = parser_ligne_etat(ligne)
+            
+            # Ligne 2 : nouvel état, symbole écrit, mouvement
             i += 1
             ligne2 = lignes[i]
+            nouvel_etat, symbole_ecrit, mouvement_brut = parser_ligne_action(ligne2)
+            mouvement = convertir_mouvement(mouvement_brut)
 
-            if ligne2.count(",") != 2:
-                raise ValueError("Transition mal formée : " + ligne2)
-
-            nouvel_etat, symbole_ecrit, mouvement = ligne2.split(",")
-            nouvel_etat = nouvel_etat.strip()
-            symbole_ecrit = symbole_ecrit.strip()
-            mouvement = mouvement.strip()
-
+            # Mettre à jour les ensembles
+            etats.add(etat_courant)
             etats.add(nouvel_etat)
+            alphabet_ruban.add(symbole_lu)
             alphabet_ruban.add(symbole_ecrit)
 
-            # Conversion du mouvement en L/R/S
-            if mouvement == "<":
-                mouvement = "L"
-            elif mouvement == ">":
-                mouvement = "R"
-            else:
-                mouvement = "S"
+            # Créer la transition
+            cle = (etat_courant, (symbole_lu,))
+            transition = Transition(nouvel_etat, [symbole_ecrit], [mouvement])
+            transitions[cle] = transition
 
-            # Construction de l'objet Transition (1 seul ruban)
-            transition = Transition(
-                nouvel_etat,
-                [symbole_ecrit],
-                [mouvement]
-            )
-
-            # Ajout dans le dictionnaire des transitions
-            # Clé : (état_courant, (symbole_lu,))
-            transitions[(etat_courant, (symbole_lu,))] = transition
-
-        # On passe à la ligne suivante
         i += 1
+    
+    return transitions, etats, alphabet_ruban
 
-    # Construction de la machine de Turing
+
+# ================================
+# Q2 — CONSTRUCTION DE LA MACHINE
+# ================================
+
+def charger_machine_depuis_fichier(chemin_fichier):
+    """
+    Q1 & Q2 :
+    Lit un fichier .tm et construit un objet MT.
+    
+    Format attendu :
+        init: I
+        accept: F
+        
+        I,1
+        X,R,>
+        ...
+    """
+    # 1. Lecture et filtrage des lignes
+    lignes = filtrer_lignes_utiles(chemin_fichier)
+
+    # 2. Extraction des métadonnées
+    etat_initial = extraire_etat_initial(lignes)
+    etat_final = extraire_etat_final(lignes)
+
+    # 3. Extraction des transitions
+    transitions, etats, alphabet_ruban = extraire_transitions(lignes)
+
+    # 4. Ajout des états spéciaux
+    if etat_initial:
+        etats.add(etat_initial)
+    if etat_final:
+        etats.add(etat_final)
+
+    # 5. Construction de la machine
     machine = MT(
-        list(etats),
-        list(alphabet_entree),
-        list(alphabet_ruban),
-        blanc,
-        etat_initial,
-        etat_final,
-        1,              # un seul ruban
-        transitions
+        etats=list(etats),
+        alphabet_entree=[],                    # Non utilisé pour l'instant
+        alphabet_ruban=list(alphabet_ruban),
+        blanc="_",                             # Convention : symbole blanc
+        etat_initial=etat_initial,
+        etat_final=etat_final,
+        nb_rubans=1,                           # Un seul ruban par défaut
+        transitions=transitions
     )
 
     return machine
 
 
+# ================================
+# Q2 — CONFIGURATION INITIALE
+# ================================
+
 def configuration_initiale(machine, mot):
     """
-    Crée la configuration initiale :
-    - ruban contenant le mot
-    - tête en position 0
-    - état = état initial
+    Q2 :
+    Crée la configuration initiale de la machine.
+    
+    - Ruban contenant le mot d'entrée (caractère par caractère)
+    - Tête de lecture en position 0
+    - État initial de la machine
     """
-
-    ruban = list(mot)
-    if len(ruban) == 0:
-        ruban = [machine.blanc]
-
+    ruban = list(mot) if mot else [machine.blanc]
+    
     return Configuration(
-        machine.etat_initial,
-        [ruban],   # un seul ruban
-        [0]        # tête au début
+        etat=machine.etat_initial,
+        rubans=[ruban],
+        positions_tetes=[0]
     )
 
 
-def faire_un_pas(machine, configuration):
-    """
-    Exécute un seul pas de calcul de la machine de Turing.
-    """
+# ================================
+# Q3 — UN PAS DE CALCUL
+# ================================
 
-    # Si on est déjà dans l'état final, on ne fait rien
-    if configuration.etat == machine.etat_final:
-        return None
+def corriger_position_tete(ruban, position, symbole_blanc):
+    """
+    Corrige la position de la tête si elle dépasse du ruban.
+    Ajoute des symboles blancs si nécessaire.
+    Retourne la nouvelle position.
+    """
+    if position < 0:
+        ruban.insert(0, symbole_blanc)
+        return 0
+    elif position >= len(ruban):
+        ruban.append(symbole_blanc)
+    return position
 
-    # 1. Lire les symboles sous les têtes
+
+def lire_symboles_sous_tetes(machine, configuration):
+    """
+    Lit les symboles sous chaque tête de lecture.
+    Corrige les positions si nécessaire.
+    Retourne la liste des symboles lus.
+    """
     symboles_lus = []
-    for index_ruban in range(machine.nb_rubans):
-        ruban = configuration.rubans[index_ruban]
-        position = configuration.positions_tetes[index_ruban]
+    
+    for i in range(machine.nb_rubans):
+        ruban = configuration.rubans[i]
+        position = configuration.positions_tetes[i]
+        
+        # Corriger la position si nécessaire
+        configuration.positions_tetes[i] = corriger_position_tete(
+            ruban, position, machine.blanc
+        )
+        
+        symboles_lus.append(ruban[configuration.positions_tetes[i]])
+    
+    return symboles_lus
 
-        # Si la tête sort du ruban, on ajoute un symbole blanc
-        if position < 0:
-            ruban.insert(0, machine.blanc)
-            position = 0
-            configuration.positions_tetes[index_ruban] = 0
-        elif position >= len(ruban):
-            ruban.append(machine.blanc)
 
-        symboles_lus.append(ruban[position])
+def chercher_transition(machine, etat, symboles_lus):
+    """
+    Cherche la transition correspondant à l'état courant
+    et aux symboles lus. Retourne None si aucune transition trouvée.
+    """
+    cle = (etat, tuple(symboles_lus))
+    return machine.transitions.get(cle, None)
 
-    # 2. Chercher la transition correspondante
-    cle = (configuration.etat, tuple(symboles_lus))
 
-    if cle not in machine.transitions:
-        # Aucune transition → la machine bloque
-        return None
-
-    transition = machine.transitions[cle]
-
-    # 3. Appliquer la transition : écrire les symboles
+def appliquer_ecriture(machine, configuration, transition):
+    """
+    Écrit les nouveaux symboles sur chaque ruban
+    selon la transition.
+    """
     for i in range(machine.nb_rubans):
         ruban = configuration.rubans[i]
         position = configuration.positions_tetes[i]
         ruban[position] = transition.symboles_ecrits[i]
 
-    # 4. Bouger les 
+
+def appliquer_mouvements(machine, configuration, transition):
+    """
+    Déplace les têtes de lecture selon les mouvements
+    spécifiés dans la transition.
+    """
     for i in range(machine.nb_rubans):
         mouvement = transition.mouvements[i]
+        
         if mouvement == "L":
             configuration.positions_tetes[i] -= 1
         elif mouvement == "R":
             configuration.positions_tetes[i] += 1
-        # "S" → ne rien faire
+        # "S" : ne rien faire
+
+
+def faire_un_pas(machine, configuration):
+    """
+    Q3 :
+    Exécute un seul pas de calcul de la machine de Turing.
+    
+    Étapes :
+    1. Lire les symboles sous les têtes
+    2. Chercher la transition correspondante
+    3. Écrire les nouveaux symboles
+    4. Déplacer les têtes
+    5. Changer d'état
+    
+    Retourne la nouvelle configuration, ou None si bloquée.
+    """
+    # Si déjà dans l'état final, ne rien faire
+    if configuration.etat == machine.etat_final:
+        return None
+
+    # 1. Lire les symboles
+    symboles_lus = lire_symboles_sous_tetes(machine, configuration)
+
+    # 2. Chercher la transition
+    transition = chercher_transition(machine, configuration.etat, symboles_lus)
+    if transition is None:
+        return None  # Machine bloquée
+
+    # 3. Écrire les symboles
+    appliquer_ecriture(machine, configuration, transition)
+
+    # 4. Déplacer les têtes
+    appliquer_mouvements(machine, configuration, transition)
 
     # 5. Changer d'état
     configuration.etat = transition.nouvel_etat
 
     return configuration
+
+
+# ================================
+# Q4 — SIMULATION COMPLÈTE
+# ================================
+
+def est_simulation_terminee(configuration, machine):
+    """
+    Vérifie si la simulation doit s'arrêter.
+    Conditions d'arrêt :
+    - État final atteint
+    - Plus de transition possible (blocage)
+    """
+    return configuration.etat == machine.etat_final
+
+
 def simuler(machine, mot, afficher=False):
     """
+    Q4 :
     Simule la machine de Turing sur un mot d'entrée.
-    Si afficher=True, on affiche chaque configuration après chaque pas.
-
-    La simulation s'arrête :
-    - quand on atteint l'état final
-    - ou quand aucune transition n'est possible (machine bloquée)
+    
+    La simulation s'arrête quand :
+    - L'état final est atteint
+    - Aucune transition n'est possible (machine bloquée)
+    
+    Args:
+        machine : objet MT
+        mot : chaîne de caractères (mot d'entrée)
+        afficher : bool, si True affiche chaque configuration
+    
+    Returns:
+        La configuration finale
     """
-
-    # 1. Création de la configuration initiale
+    # 1. Configuration initiale
     configuration = configuration_initiale(machine, mot)
-
-    # Si l'utilisateur veut afficher les étapes → on affiche la configuration initiale
+    
     if afficher:
         afficher_configuration(configuration)
 
-    # 2. Boucle principale de simulation
-    while True:
-
-        # Si on est dans l'état final → fin du calcul
-        if configuration.etat == machine.etat_final:
-            return configuration
-
-        # 3. On exécute un pas de calcul
+    # 2. Boucle de simulation
+    while not est_simulation_terminee(configuration, machine):
         nouvelle_config = faire_un_pas(machine, configuration)
-
-        # Si aucune transition n'est possible → la machine bloque
+        
         if nouvelle_config is None:
-            return configuration
-
-        # Mise à jour de la configuration
+            break  # Machine bloquée
+        
         configuration = nouvelle_config
-
-        # Si afficher=True → on affiche la nouvelle configuration
+        
         if afficher:
             afficher_configuration(configuration)
+    
+    return configuration
+
+
+# ================================
+# Q5 — AFFICHAGE DES CONFIGURATIONS
+# ================================
+
+def formater_ruban(ruban):
+    """
+    Formate le contenu d'un ruban pour affichage.
+    Exemple : ['1', '0', '_'] -> '1 0 _'
+    """
+    return " ".join(ruban)
+
+
+def formater_position_tete(position):
+    """
+    Formate l'indicateur de position de la tête.
+    Exemple : position=2 -> '      ^'
+    """
+    return "   " * position + "^"
 
 
 def afficher_configuration(configuration):
     """
+    Q5 :
     Affiche une configuration de la machine :
-    - état courant
-    - contenu du ruban
-    - position de la tête
-
-    Cette fonction sert uniquement à visualiser ce que fait la machine
-    à chaque étape du calcul.
+    - État courant
+    - Contenu de chaque ruban
+    - Position de chaque tête
+    
+    Format d'affichage :
+        Ruban : 1 0 _ 1
+                ^
+        État  : q1
+        ----------------------------------
     """
-
-    # On récupère le ruban (ici on suppose qu'il n'y a qu'un seul ruban)
-    ruban = configuration.rubans[0]
-
-    # Position de la tête sur ce ruban
-    position = configuration.positions_tetes[0]
-
-    # --- Affichage du ruban ---
-    # On affiche tous les symboles séparés par des espaces
-    print("Ruban :", " ".join(ruban))
-
-    # --- Affichage de la tête ---
-    # On affiche des espaces jusqu'à la position de la tête, puis un ^
-    # Exemple : si position = 3 → "      ^"
-    print("       ", "   " * position + "^")
-
-    # --- Affichage de l'état courant ---
-    print("État  :", configuration.etat)
-
-    # Ligne de séparation pour rendre l'affichage plus lisible
-    print("----------------------------------")
+    for i in range(len(configuration.rubans)):
+        ruban = configuration.rubans[i]
+        position = configuration.positions_tetes[i]
+        
+        # Afficher le ruban si plusieurs, sinon format simple
+        if len(configuration.rubans) > 1:
+            print(f"Ruban {i+1} : {formater_ruban(ruban)}")
+        else:
+            print(f"Ruban : {formater_ruban(ruban)}")
+        
+        print(f"       {formater_position_tete(position)}")
+    
+    print(f"État  : {configuration.etat}")
+    print("-" * 40)
