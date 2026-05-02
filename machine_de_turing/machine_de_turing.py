@@ -1,4 +1,4 @@
-from mt_structures import Transition, MT, Configuration
+from .mt_structures import Transition, MT, Configuration
 
 def charger_machine_depuis_fichier(chemin_fichier):
     """

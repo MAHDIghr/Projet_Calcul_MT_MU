@@ -1,8 +1,11 @@
-from chargeur import charger_machine_depuis_fichier, configuration_initiale
-from simulateur import simuler
+from machine_de_turing.machine_de_turing import (
+    charger_machine_depuis_fichier,
+    configuration_initiale,
+    simuler
+)
 
 # 1. Charger la machine depuis le fichier
-machine = charger_machine_depuis_fichier("machines/hash_to_x_clean.tm")
+machine = charger_machine_depuis_fichier("machine_de_turing/machines/hash_to_x_clean.tm")
 print("TRANSITIONS CHARGÉES :")
 for cle, t in machine.transitions.items():
     print(cle, "→", t.nouvel_etat, t.symboles_ecrits, t.mouvements)
