@@ -358,10 +358,7 @@ def faire_un_pas(machine, configuration):
 
 def est_simulation_terminee(configuration, machine):
     """
-    Vérifie si la simulation doit s'arrêter.
-    Conditions d'arrêt :
-    - État final atteint
-    - Plus de transition possible (blocage)
+    Vérifie si l'état final est atteint.
     """
     return configuration.etat == machine.etat_final
 
