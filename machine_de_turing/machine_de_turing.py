@@ -21,27 +21,29 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from machine_de_turing.mt_structures import Transition, MT, Configuration
 
-
 # ================================
-# Q1 & Q2 — LECTURE ET PARSING
+# Q2 — LECTURE ET PARSING
 # ================================
 
 def filtrer_lignes_utiles(chemin_fichier):
     """
     Lit un fichier .tm et retourne uniquement les lignes utiles
     (sans commentaires, sans lignes vides, sans espaces inutiles).
+    Supprime aussi les commentaires en ligne après '//'.
     """
     lignes = []
     with open(chemin_fichier, "r", encoding="utf-8") as f:
         for ligne in f:
+            # Supprimer les commentaires en ligne
+            if "//" in ligne:
+                ligne = ligne.split("//")[0]
+            
             ligne = ligne.strip()
 
-            # Ignorer les lignes vides
             if ligne == "":
                 continue
 
-            # Ignorer les commentaires
-            if ligne.startswith("//") or ligne.startswith("#"):
+            if ligne.startswith("#"):
                 continue
 
             lignes.append(ligne)
@@ -109,7 +111,7 @@ def parser_ligne_action(ligne):
     return nouvel_etat.strip(), symbole_ecrit.strip(), mouvement.strip()
 
 
-def convertir_mouvement(mouvement_brut):
+def convertir_mouvement(mouvement_brut):  
     """
     Convertit un mouvement du format .tm vers le format interne.
     '<' -> 'L', '>' -> 'R', '-' -> 'S'
@@ -169,10 +171,6 @@ def extraire_transitions(lignes):
     return transitions, etats, alphabet_ruban
 
 
-# ================================
-# Q2 — CONSTRUCTION DE LA MACHINE
-# ================================
-
 def charger_machine_depuis_fichier(chemin_fichier):
     """
     Q1 & Q2 :
@@ -216,10 +214,6 @@ def charger_machine_depuis_fichier(chemin_fichier):
 
     return machine
 
-
-# ================================
-# Q2 — CONFIGURATION INITIALE
-# ================================
 
 def configuration_initiale(machine, mot):
     """
@@ -449,3 +443,93 @@ def afficher_configuration(configuration):
     
     print(f"État  : {configuration.etat}")
     print("-" * 40)
+
+
+# ================================
+# Q6 — MACHINES DE TURING PRÉDÉFINIES
+# ================================
+
+def charger_machine_comparaison():
+    """
+    Q6 : Machine de comparaison d'entiers en binaire.
+    Entrée : x#y (x,y en binaire)
+    S'arrête si x < y, boucle sinon.
+    """
+    chemin = os.path.join(
+        os.path.dirname(__file__), "machines", "comparaison.tm"
+    )
+    return charger_machine_depuis_fichier(chemin)
+
+
+def charger_machine_recherche():
+    """
+    Q6 : Machine de recherche dans une liste.
+    Entrée : x#w1#w2#...#wl
+    S'arrête si x = wi, boucle sinon.
+    """
+    chemin = os.path.join(
+        os.path.dirname(__file__), "machines", "recherche.tm"
+    )
+    return charger_machine_depuis_fichier(chemin)
+
+
+def charger_machine_multiplication_unaire():
+    """
+    Q6 : Machine de multiplication en unaire.
+    Entrée : 1^n # 1^m
+    Sortie : 1^{n*m}
+    """
+    chemin = os.path.join(
+        os.path.dirname(__file__), "machines", "multiplication_unaire.tm"
+    )
+    return charger_machine_depuis_fichier(chemin)
+
+
+def charger_machine_multiplication_binaire():
+    """
+    Q6 (Bonus) : Machine de multiplication en binaire.
+    Entrée : x#y (x,y en binaire)
+    Sortie : x*y en binaire
+    """
+    chemin = os.path.join(
+        os.path.dirname(__file__), "machines", "multiplication_binaire.tm"
+    )
+    return charger_machine_depuis_fichier(chemin)
+
+# ================================
+# MAIN — QUESTION 6
+# ================================
+
+if __name__ == "__main__":
+    print("\n" + "=" * 50)
+    print("  QUESTION 6 — TESTS DES MACHINES")
+    print("=" * 50 + "\n")
+
+    # Test 1 : Comparaison d'entiers en binaire
+    print("[Test 1] Comparaison : 10 < 100 ? (2 < 4 en décimal)")
+    machine = charger_machine_comparaison()
+    config = simuler(machine, "10#100", afficher=True)
+    if config.etat == machine.etat_final:
+        print("  ✅ x < y → machine accepte\n")
+    else:
+        print("  ❌ x >= y → machine bloquée\n")
+
+    # Test 2 : Recherche dans une liste
+    print("[Test 2] Recherche : '10' dans ['01', '10', '11'] ?")
+    machine = charger_machine_recherche()
+    config = simuler(machine, "10#01#10#11", afficher=True)
+    if config.etat == machine.etat_final:
+        print("  ✅ Mot trouvé → machine accepte\n")
+    else:
+        print("  ❌ Mot non trouvé → machine bloquée\n")
+
+    # Test 3 : Multiplication en unaire
+    print("[Test 3] Multiplication unaire : 11 * 111 (2*3 en décimal)")
+    machine = charger_machine_multiplication_unaire()
+    config = simuler(machine, "11#111", afficher=True)
+    resultat = "".join(config.rubans[0]).replace("_", "")
+    print(f"  ✅ Résultat : {resultat}\n")
+
+    print("=" * 50)
+    print("  FIN DES TESTS")
+    print("=" * 50)

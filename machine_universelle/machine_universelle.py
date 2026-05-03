@@ -7,7 +7,6 @@ Implémentation des questions 7 à 10 du projet.
 import sys
 import os
 
-# Cela permet de faire des imports absolus depuis n'importe où dans le projet
 chemin_racine = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if chemin_racine not in sys.path:
     sys.path.insert(0, chemin_racine)
@@ -60,7 +59,7 @@ def encoder_transition(t):
     q|s|q'|s'|D
     """
     etat, lu, nouvel_etat, ecrit, mouv = t
-    return f"{etat}|{lu}|{nouvel_etat}|{ecrit}|{mouv}"
+    return f"{etat}|{lu}|{ecrit}|{mouv}|{nouvel_etat}"
 
 
 def encoder_machine_symbolique(chemin):
