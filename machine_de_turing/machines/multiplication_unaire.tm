@@ -1,96 +1,109 @@
+// Multiplication en unaire
+// Entree : 1^n # 1^m
+// On insere un # separateur pour obtenir : 1^n # 1^m # 1^(n*m)
+// Pour chaque 1 de n, on copie m uns apres le second #
+
 init: I
 accept: F
 
-// Étape 1 : Compter les 1 de n (remplacer par X)
+// Etape 0 : inserer le second # a la fin du ruban
+// On avance jusqu'a la fin et on place #
 I,1
-I,X,>
+e0,1,>
 
-I,#
-zero_n,#,>
+e0,1
+e0,1,>
 
-// Continuer à compter n
-I,X
-I,X,>
+e0,#
+e1,#,>
 
-// Arrivé au #, passer à y
-I,#
-setup,#,>
+e1,1
+e1,1,>
 
-// n=0 → résultat = 0
-zero_n,1
-zero_n,1,>
+e1,_
+e2,#,<
 
-zero_n,_
-F,_,-
+// Revenir au debut
+e2,1
+e2,1,<
 
-// Aller à la fin de y, puis copier n
-setup,1
-setup,1,>
+e2,#
+e2,#,<
 
-setup,_
-rewind,_,<
+e2,_
+debut,_,>
 
-// Revenir au début pour copier
-rewind,1
-rewind,1,<
+// Ruban : 1^n # 1^m # _
+// debut : lire un 1 de n
+debut,1
+an,_,>
 
-rewind,#
-rewind,#,<
+// n fini
+debut,#
+F,#,-
 
-rewind,X
-copy_one,X,>
+// Avancer jusqu'au premier #
+an,1
+an,1,>
 
-rewind,_
-copy_one,_,>
+an,_
+an,_,>
 
-// Copier un bloc de n
-copy_one,X
-copy_one,1,>
+an,#
+am,#,>
 
-copy_one,1
-copy_one,1,>
+// Lire un 1 de m, le marquer |
+// Sauter les | deja marques
+am,|
+am,|,>
 
-copy_one,#
-copy_one,#,>
+am,1
+af,|,>
 
-copy_one,_
-dec_m,_,<
+// m fini : on est au second #
+am,#
+rs,#,<
 
-// Décrémenter m (remplacer 1 par _)
-dec_m,1
-go_back,_,<
+// Aller apres le second # pour ecrire 1
+af,1
+af,1,>
 
-dec_m,_
-cleanup,_,<
+af,|
+af,|,>
 
-// Revenir au début
-go_back,_
-go_back,_,<
+af,#
+af2,#,>
 
-go_back,1
-go_back,1,<
+// Ecrire 1 a la fin du resultat
+af2,1
+af2,1,>
 
-go_back,#
-go_back,#,<
+af2,_
+aw,1,<
 
-go_back,X
-copy_one,X,>
+// Revenir au second # 
+aw,1
+aw,1,<
 
-go_back,1
-go_back,1,<
+aw,#
+aw2,#,<
 
-// Nettoyage final
-cleanup,_
-cleanup,_,<
+// Revenir au | qu'on vient de poser dans m
+aw2,1
+aw2,1,<
 
-cleanup,1
-cleanup,1,<
+aw2,|
+am,1,>
 
-cleanup,#
-cleanup,#,<
+// Restaurer les | en 1 et revenir au debut
+rs,|
+rs,1,<
 
-cleanup,X
-cleanup,1,<
+rs,1
+rs,1,<
 
-cleanup,_
-F,_,>
+rs,#
+rs,#,<
+
+rs,_
+debut,_,>

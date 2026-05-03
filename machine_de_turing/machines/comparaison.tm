@@ -1,121 +1,115 @@
+// Comparaison x#y en binaire
+// S'arrête (F) si x < y, boucle sinon
+// On efface x bit par bit, on saute les bits de y sans les effacer
+// On utilise | pour marquer jusqu'où on est allé dans y
+
 init: I
 accept: F
 
-// Avancer jusqu'au #
+// Lire le prochain bit de x
 I,0
-I,0,>
+lu0,_,>
 
 I,1
-I,1,>
+lu1,_,>
 
+// x épuisé → regarder si y a encore des bits
 I,#
-check,#,>
+finx,#,>
 
-// Lire x (après #)
-check,0
-found_0,#,<
+// Traverser jusqu'au #
+lu0,0
+lu0,0,>
 
-check,1
-found_1,#,<
+lu0,1
+lu0,1,>
 
-check,_
-F,_,-       // x fini avant y → x < y → accepter
+lu0,_
+lu0,_,>
 
-// Revenir au # après avoir trouvé 0 dans x
-found_0,_
-found_0,_,<
+lu0,#
+cy0,#,>
 
-found_0,0
-found_0,0,<
+lu1,0
+lu1,0,>
 
-found_0,1
-found_0,1,<
+lu1,1
+lu1,1,>
 
-found_0,#
-go_y_0,#,>
+lu1,_
+lu1,_,>
 
-// Revenir au # après avoir trouvé 1 dans x
-found_1,_
-found_1,_,<
+lu1,#
+cy1,#,>
 
-found_1,0
-found_1,0,<
+// Sauter les | déjà marqués dans y
+cy0,|
+cy0,|,>
 
-found_1,1
-found_1,1,<
+cy1,|
+cy1,|,>
 
-found_1,#
-go_y_1,#,>
+// Comparer : on avait lu 0 dans x
+cy0,0
+retour,|,<
 
-// Aller à y après #
-go_y_0,0
-go_y_0,0,>
+cy0,1
+F,|,-
 
-go_y_0,1
-go_y_0,1,>
+cy0,_
+LOOP,_,-
 
-go_y_0,_
-go_y_0,_,>
+// Comparer : on avait lu 1 dans x
+cy1,0
+LOOP,|,-
 
-// Lire y pour x=0
-go_y_0,0
-equal,0,<      // 0=0 → continuer
+cy1,1
+retour,|,<
 
-go_y_0,1
-accept,1,<     // 0<1 → x<y → accepter
+cy1,_
+LOOP,_,-
 
-go_y_0,_
-loop,_,-       // y fini mais pas x → x>y → boucler
+// Retour au début
+retour,|
+retour,|,<
 
-// Aller à y après #
-go_y_1,0
-go_y_1,0,>
+retour,0
+retour,0,<
 
-go_y_1,1
-go_y_1,1,>
+retour,1
+retour,1,<
 
-go_y_1,_
-go_y_1,_,>
+retour,#
+retour,#,<
 
-// Lire y pour x=1
-go_y_1,0
-loop,0,-       // 1>0 → x>y → boucler
+retour,_
+I,_,>
 
-go_y_1,1
-equal,1,<      // 1=1 → continuer
+// x fini : si y a encore des bits → x < y
+finx,|
+finx,|,>
 
-go_y_1,_
-loop,_,-       // y fini → x>y → boucler
-
-// Continuer la comparaison
-equal,_
-equal,_,<
-
-equal,0
-equal,0,<
-
-equal,1
-equal,1,<
-
-equal,#
-check,#,>      // Revenir à l'état check
-
-// Accepter (x < y)
-accept,_
-F,_,-
-
-accept,0
+finx,0
 F,0,-
 
-accept,1
+finx,1
 F,1,-
 
-// Boucle infinie (x >= y)
-loop,_
-loop,_,-
+finx,_
+LOOP,_,-
 
-loop,0
-loop,0,-
+// Boucle infinie
+LOOP,0
+LOOP,0,>
 
-loop,1
-loop,1,-
+LOOP,1
+LOOP,1,>
+
+LOOP,#
+LOOP,#,>
+
+LOOP,|
+LOOP,|,>
+
+LOOP,_
+LOOP,_,>

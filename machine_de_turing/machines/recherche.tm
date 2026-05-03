@@ -1,128 +1,152 @@
+// Recherche dans une liste
+// Entrée : x#w1#w2#...#wl
+// S'arrête (F) si x = wi pour un i, boucle sinon
+// Principe : on compare x avec chaque wi bit à bit
+// On marque les bits comparés avec _ et on recommence pour chaque wi
+
 init: I
 accept: F
 
-// Marquer le début du mot x (remplacer premier bit par X ou Y)
+// --- Phase 1 : lire un bit de x ---
 I,0
-mark_0,X,>
+lux0,_,>
 
 I,1
-mark_1,Y,>
+lux1,_,>
 
-// Chercher le # après x
-mark_0,0
-mark_0,0,>
+// x épuisé → vérifier si le wi courant est aussi épuisé
+I,#
+verifx,#,>
 
-mark_0,1
-mark_0,1,>
+// --- Traverser x jusqu'au premier # ---
+lux0,0
+lux0,0,>
 
-mark_0,#
-go_start,#,<
+lux0,1
+lux0,1,>
 
-mark_1,0
-mark_1,0,>
+lux0,#
+cy0,#,>
 
-mark_1,1
-mark_1,1,>
+lux1,0
+lux1,0,>
 
-mark_1,#
-go_start,#,<
+lux1,1
+lux1,1,>
 
-// Revenir au début du ruban
-go_start,_
-go_start,_,<
+lux1,#
+cy1,#,>
 
-go_start,0
-go_start,0,<
+// --- Sauter les wi déjà comparés (marqués _) ---
+cy0,_
+cy0,_,>
 
-go_start,1
-go_start,1,<
+cy1,_
+cy1,_,>
 
-go_start,X
-compare,X,>
+// --- Comparer bit de x avec bit de wi ---
+// On avait lu 0 dans x
+cy0,0
+retour,_,<
 
-go_start,Y
-compare,Y,>
+cy0,1
+suivant,1,<
 
-// Comparer le bit courant de x avec le mot
-compare,X
-check_w,0,>    // On attend 0
+cy0,#
+suivant,#,<
 
-compare,Y
-check_w,1,>    // On attend 1
+cy0,_
+LOOP,_,-
 
-check_w,0
-match,_,>      // OK : 0=0
+// On avait lu 1 dans x
+cy1,0
+suivant,0,<
 
-check_w,1
-next_word,_,>  // KO : on attend 0, on a 1
+cy1,1
+retour,_,<
 
-// Avancer jusqu'au prochain # ou _
-match,_
-match,_,>
+cy1,#
+suivant,#,<
 
-match,0
-match,0,>
+cy1,_
+LOOP,_,-
 
-match,1
-match,1,>
-
-match,X
-compare,X,>    // Continuer avec le prochain bit de x
-
-match,Y
-compare,Y,>    // Continuer avec le prochain bit de x
-
-match,#
-found,#,<      // x et le mot ont la même longueur
-
-// Mot trouvé → accepter
-found,_
+// --- x épuisé : vérifier que wi est aussi épuisé ---
+verifx,_
 F,_,-
 
-found,X
-F,_,-
+verifx,0
+suivant,0,<
 
-found,Y
-F,_,-
+verifx,1
+suivant,1,<
 
-// Passer au mot suivant
-next_word,_
-next_word,_,>
+verifx,#
+F,#,-
 
-next_word,0
-next_word,0,>
+// --- Retour au début de x ---
+retour,0
+retour,0,<
 
-next_word,1
-next_word,1,>
+retour,1
+retour,1,<
 
-next_word,#
-next_word,#,>
+retour,#
+retour,#,<
 
-next_word,X
-go_start,_,<   // Recommencer depuis le début
+retour,_
+I,_,>
 
-next_word,Y
-go_start,_,<   // Recommencer depuis le début
+// --- Passer au wi suivant ---
+// On avance jusqu'au prochain # puis on repart
+suivant,0
+suivant,0,>
 
-// Fin de liste : mot non trouvé → boucler
-go_start,_
-loop,_,-       // Rien trouvé → boucle infinie
+suivant,1
+suivant,1,>
 
-// Boucle infinie
-loop,_
-loop,_,-
+suivant,#
+reset,#,>
 
-loop,0
-loop,0,-
+suivant,_
+LOOP,_,-
 
-loop,1
-loop,1,-
+// --- Remettre x à zéro pour comparer avec wi+1 ---
+// On revient au début et on relit x depuis le début
+reset,0
+reset,0,>
 
-loop,#
-loop,#,-
+reset,1
+reset,1,>
 
-loop,X
-loop,X,-
+reset,#
+reset,#,>
 
-loop,Y
-loop,Y,-
+reset,_
+rebob,_,<
+
+// Reculer jusqu'au début
+rebob,0
+rebob,0,<
+
+rebob,1
+rebob,1,<
+
+rebob,#
+rebob,#,<
+
+rebob,_
+I,_,>
+
+// --- Boucle infinie ---
+LOOP,0
+LOOP,0,>
+
+LOOP,1
+LOOP,1,>
+
+LOOP,#
+LOOP,#,>
+
+LOOP,_
+LOOP,_,>

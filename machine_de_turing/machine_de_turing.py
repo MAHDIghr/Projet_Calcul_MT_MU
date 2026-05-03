@@ -357,7 +357,7 @@ def est_simulation_terminee(configuration, machine):
     return configuration.etat == machine.etat_final
 
 
-def simuler(machine, mot, afficher=False):
+def simuler(machine, mot, afficher=False, max_pas=1000):
     """
     Q4 :
     Simule la machine de Turing sur un mot d'entrée.
@@ -391,6 +391,7 @@ def simuler(machine, mot, afficher=False):
         
         if afficher:
             afficher_configuration(configuration)
+        
     
     return configuration
 
@@ -404,15 +405,18 @@ def formater_ruban(ruban):
     Formate le contenu d'un ruban pour affichage.
     Exemple : ['1', '0', '_'] -> '1 0 _'
     """
-    return " ".join(ruban)
+    return " ".join(str(x) for x in ruban)
 
+def formater_position_tete(ruban, position):
+    """
+    Affiche correctement la tête sous le bon symbole.
+    """
+    affichage = " ".join(str(x) for x in ruban)
 
-def formater_position_tete(position):
-    """
-    Formate l'indicateur de position de la tête.
-    Exemple : position=2 -> '      ^'
-    """
-    return "   " * position + "^"
+    # position réelle = chaque élément = 2 chars environ ("x ")
+    index_char = position * 2
+
+    return " " * index_char + " ^"
 
 
 def afficher_configuration(configuration):
@@ -432,15 +436,16 @@ def afficher_configuration(configuration):
     for i in range(len(configuration.rubans)):
         ruban = configuration.rubans[i]
         position = configuration.positions_tetes[i]
-        
-        # Afficher le ruban si plusieurs, sinon format simple
+
+        affichage = formater_ruban(ruban)
+
         if len(configuration.rubans) > 1:
-            print(f"Ruban {i+1} : {formater_ruban(ruban)}")
+            print(f"Ruban {i+1} : {affichage}")
         else:
-            print(f"Ruban : {formater_ruban(ruban)}")
-        
-        print(f"       {formater_position_tete(position)}")
-    
+            print(f"Ruban : {affichage}")
+
+        print(f"       {formater_position_tete(ruban, position)}")
+
     print(f"État  : {configuration.etat}")
     print("-" * 40)
 
@@ -495,41 +500,3 @@ def charger_machine_multiplication_binaire():
         os.path.dirname(__file__), "machines", "multiplication_binaire.tm"
     )
     return charger_machine_depuis_fichier(chemin)
-
-# ================================
-# MAIN — QUESTION 6
-# ================================
-
-if __name__ == "__main__":
-    print("\n" + "=" * 50)
-    print("  QUESTION 6 — TESTS DES MACHINES")
-    print("=" * 50 + "\n")
-
-    # Test 1 : Comparaison d'entiers en binaire
-    print("[Test 1] Comparaison : 10 < 100 ? (2 < 4 en décimal)")
-    machine = charger_machine_comparaison()
-    config = simuler(machine, "10#100", afficher=True)
-    if config.etat == machine.etat_final:
-        print("  ✅ x < y → machine accepte\n")
-    else:
-        print("  ❌ x >= y → machine bloquée\n")
-
-    # Test 2 : Recherche dans une liste
-    print("[Test 2] Recherche : '10' dans ['01', '10', '11'] ?")
-    machine = charger_machine_recherche()
-    config = simuler(machine, "10#01#10#11", afficher=True)
-    if config.etat == machine.etat_final:
-        print("  ✅ Mot trouvé → machine accepte\n")
-    else:
-        print("  ❌ Mot non trouvé → machine bloquée\n")
-
-    # Test 3 : Multiplication en unaire
-    print("[Test 3] Multiplication unaire : 11 * 111 (2*3 en décimal)")
-    machine = charger_machine_multiplication_unaire()
-    config = simuler(machine, "11#111", afficher=True)
-    resultat = "".join(config.rubans[0]).replace("_", "")
-    print(f"  ✅ Résultat : {resultat}\n")
-
-    print("=" * 50)
-    print("  FIN DES TESTS")
-    print("=" * 50)
