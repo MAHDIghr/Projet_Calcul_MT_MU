@@ -1,10 +1,10 @@
-# 🧠 Machine de Turing & Machine Universelle
+#  Machine de Turing & Machine Universelle
 
 Ce projet implémente plusieurs exercices autour des machines de Turing et d’une machine universelle, avec différents tests unitaires et fonctionnels.
 
 ---
 
-## 📁 Structure du projet
+##  Structure du projet
 
 - `main.py` : point d’entrée principal
 - `machine_de_turing/` : implémentation de la machine de Turing + tests unitaires
@@ -13,7 +13,7 @@ Ce projet implémente plusieurs exercices autour des machines de Turing et d’u
 
 ---
 
-## ⚙️ Prérequis
+##  Prérequis
 
 - Python 3.x installé
 - `make` (uniquement sous Linux / macOS)
